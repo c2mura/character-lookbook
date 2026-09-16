@@ -203,7 +203,7 @@
   }
   .board-scale-wrap {
     transform-origin: center center;
-    transition: transform 0.15s ease-out;
+    transition: transform 0.12s ease-out;
     display: flex; justify-content: center; align-items: center;
   }
   .board {
@@ -213,6 +213,60 @@
     user-select: none; flex-shrink: 0;
     touch-action: none;
   }
+
+  /* ★フローティングズームバー（拡大縮小・全体表示コントローラー） */
+  .zoom-floating-bar {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 30px;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+    z-index: 90;
+  }
+  .zoom-btn {
+    background: transparent;
+    border: none;
+    color: #f1f5f9;
+    font-size: 15px;
+    font-weight: 700;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+  .zoom-btn:hover { background: #334155; color: #38bdf8; }
+  .zoom-label {
+    color: #e2e8f0;
+    font-size: 11.5px;
+    font-weight: 600;
+    min-width: 44px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .zoom-fit-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
+    color: #f1f5f9;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .zoom-fit-btn:hover { background: var(--c-turquoise); color: #fff; }
 
   /* SNAP GUIDES */
   .snap-guide {
@@ -317,7 +371,6 @@
     display: flex; gap: 8px; width: 100%; margin: 0; padding: 0; align-items: stretch;
   }
 
-  /* ★各画像スロット */
   .img-slot {
     position: relative;
     min-width: 50px; background: transparent;
@@ -346,7 +399,6 @@
   .mini-tool-btn:hover { background: #334155; color: #38bdf8; }
   .mini-tool-btn.btn-del-img:hover { background: #7f1d1d; color: #fca5a5; }
 
-  /* ★画像単体の右下ドラッグリサイズハンドル */
   .slot-resize-handle {
     position: absolute; right: -4px; bottom: -4px; width: 14px; height: 14px;
     cursor: nwse-resize; background: var(--board-line1); border: 2px solid #fff;
@@ -355,8 +407,6 @@
   }
   .img-slot:hover .slot-resize-handle,
   .item.selected .slot-resize-handle { opacity: 1; }
-
-  /* 単体画像のときは枠全体の右下ハンドルと重ならないようスロットハンドルは非表示 */
   .group-item[data-count="1"] .slot-resize-handle { display: none !important; }
 
   /* 上下テキストブロック */
@@ -396,7 +446,6 @@
   }
   .md-render strong { color: var(--board-line1); }
 
-  /* 標準箇条書きスタイル（ul / li） */
   .md-render ul, .md-render ol {
     margin: 4px 0 6px 0;
     padding-left: 20px;
@@ -549,7 +598,7 @@
 
     <div class="section-title">
       <h3><span>✦</span> Saved Archives <em>保存した資料</em></h3>
-      <p style="font-size:11.5px; color:#64748b;">自動保存データ</p>
+      <p style="font-size:11.5px; color:#64748b;">ブラウザ内DB（IndexedDB）に完全保存</p>
     </div>
     <div class="cards-grid" id="projectGrid"></div>
   </main>
@@ -566,8 +615,8 @@
       <input type="text" id="currentDocTitleInput" class="doc-name-input" value="Untitled Character" title="シート名">
     </div>
     <div class="nav-right">
-      <button class="btn-nav hide-on-mobile" id="btnFitScreen">全体</button>
-      <button class="btn-nav" id="btnSaveLocal">保存</button>
+      <button class="btn-nav hide-on-mobile" id="btnFitScreen">全体表示</button>
+      <button class="btn-nav" id="btnSaveLocal">下書き保存</button>
       <button class="btn-nav primary" id="btnOpenExportModal">書き出し (PDF/PNG)</button>
     </div>
   </header>
@@ -675,6 +724,14 @@
       <div class="merge-notice-bar" id="mergeNoticeBar">
         <span>✦ 合体したい相手の画像枠をクリックしてください</span>
         <button class="btn-cancel-merge" id="btnCancelMerge">✕ キャンセル</button>
+      </div>
+
+      <!-- ★右下のフローティングズームバー（拡大・縮小・リセット・全体表示） -->
+      <div class="zoom-floating-bar">
+        <button class="zoom-btn" id="btnZoomOut" title="縮小 (5%)">−</button>
+        <span class="zoom-label" id="zoomDisplayLabel" title="クリックで100%にリセット">100%</span>
+        <button class="zoom-btn" id="btnZoomIn" title="拡大 (5%)">＋</button>
+        <button class="zoom-fit-btn" id="btnZoomFitFloat" title="画面サイズにぴったり合わせる">全体</button>
       </div>
 
       <div class="board-scale-wrap" id="boardScaleWrap">
@@ -793,23 +850,92 @@ let uidCount = 0;
 function uid(p){ return p + '_' + (++uidCount) + '_' + Date.now().toString(36); }
 
 /* =========================================================
-   LOCAL STORAGE
+   INDEXED-DB STORAGE (大容量画像も確実に完全保存)
 ========================================================= */
-const STORAGE_KEY = 'lookbook_v12_projects';
-function getSavedProjects(){
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e){ return []; }
+const DB_NAME = 'CharacterLookbookDB';
+const DB_VERSION = 1;
+const STORE_PROJECTS = 'projects';
+
+function openAppDB(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e)=>{
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(STORE_PROJECTS)){
+        db.createObjectStore(STORE_PROJECTS, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
 }
-function saveProjectsList(list){
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch(e){}
+
+async function dbGetAllProjects(){
+  try {
+    const db = await openAppDB();
+    return new Promise((resolve, reject)=>{
+      const tx = db.transaction(STORE_PROJECTS, 'readonly');
+      const store = tx.objectStore(STORE_PROJECTS);
+      const req = store.getAll();
+      req.onsuccess = ()=> resolve(req.result || []);
+      req.onerror = ()=> reject(req.error);
+    });
+  } catch(e){
+    console.error('IndexedDB error:', e);
+    return [];
+  }
 }
-function renderHomeGrid(){
+
+async function dbGetProject(id){
+  try {
+    const db = await openAppDB();
+    return new Promise((resolve, reject)=>{
+      const tx = db.transaction(STORE_PROJECTS, 'readonly');
+      const store = tx.objectStore(STORE_PROJECTS);
+      const req = store.get(id);
+      req.onsuccess = ()=> resolve(req.result);
+      req.onerror = ()=> reject(req.error);
+    });
+  } catch(e){
+    console.error('IndexedDB error:', e);
+    return null;
+  }
+}
+
+async function dbSaveProject(doc){
+  const db = await openAppDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(STORE_PROJECTS, 'readwrite');
+    const store = tx.objectStore(STORE_PROJECTS);
+    const req = store.put(doc);
+    req.onsuccess = ()=> resolve();
+    req.onerror = ()=> reject(req.error);
+  });
+}
+
+async function dbDeleteProject(id){
+  const db = await openAppDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(STORE_PROJECTS, 'readwrite');
+    const store = tx.objectStore(STORE_PROJECTS);
+    const req = store.delete(id);
+    req.onsuccess = ()=> resolve();
+    req.onerror = ()=> reject(req.error);
+  });
+}
+
+async function renderHomeGrid(){
   const grid = document.getElementById('projectGrid');
+  grid.innerHTML = '<div style="color:#64748b; font-size:12px; grid-column:1/-1;">読み込み中...</div>';
+  const list = await dbGetAllProjects();
   grid.innerHTML = '';
-  const list = getSavedProjects();
   if(!list.length){
     grid.innerHTML = '<div class="empty-state">✦ 保存された資料はありません。「新規作成」から開始してください。</div>';
     return;
   }
+  // 更新日時の降順
+  list.sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
+
   list.forEach(item => {
     const card = document.createElement('div');
     card.className = 'doc-card';
@@ -828,28 +954,25 @@ function renderHomeGrid(){
       if(e.target.classList.contains('doc-card-del')) return;
       openProject(item.id);
     });
-    card.querySelector('.doc-card-del').addEventListener('click', (e)=>{
+    card.querySelector('.doc-card-del').addEventListener('click', async (e)=>{
       e.stopPropagation();
-      if(confirm('この資料を削除しますか？')){
-        deleteProject(item.id);
+      if(confirm(`「${item.title || 'この資料'}」を削除しますか？`)){
+        await dbDeleteProject(item.id);
+        renderHomeGrid();
       }
     });
     grid.appendChild(card);
   });
 }
-function deleteProject(id){
-  const list = getSavedProjects().filter(p => p.id !== id);
-  saveProjectsList(list);
-  renderHomeGrid();
-}
-function saveCurrentToStorage(){
+
+async function saveCurrentToStorage(){
   commitAllEdits();
-  const list = getSavedProjects();
   const now = new Date();
-  const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  
   const doc = {
     id: state.currentProjectId || uid('proj'),
-    title: state.docTitle,
+    title: state.docTitle || 'Untitled Character',
     updatedAt: dateStr,
     boardW: state.boardW,
     boardH: state.boardH,
@@ -862,13 +985,18 @@ function saveCurrentToStorage(){
     items: Object.values(state.items)
   };
   state.currentProjectId = doc.id;
-  const idx = list.findIndex(p => p.id === doc.id);
-  if(idx >= 0) list[idx] = doc; else list.unshift(doc);
-  saveProjectsList(list);
+  try {
+    await dbSaveProject(doc);
+    return true;
+  } catch(err){
+    console.error('保存に失敗しました:', err);
+    alert('保存に失敗しました: ' + err.message);
+    return false;
+  }
 }
 
 /* =========================================================
-   CANVAS AUTO-FIT & TIGHT RESIZE
+   CANVAS AUTO-FIT & MANUAL ZOOM
 ========================================================= */
 const workspace = document.getElementById('editorWorkspace');
 const boardScaleWrap = document.getElementById('boardScaleWrap');
@@ -876,18 +1004,27 @@ const board = document.getElementById('board');
 const itemsContainer = document.getElementById('itemsContainer');
 const guideV = document.getElementById('guideV');
 const guideH = document.getElementById('guideH');
+const zoomDisplayLabel = document.getElementById('zoomDisplayLabel');
+
+function setZoom(val){
+  state.scale = Math.max(0.15, Math.min(3.0, +val.toFixed(2)));
+  boardScaleWrap.style.transform = `scale(${state.scale})`;
+  zoomDisplayLabel.textContent = Math.round(state.scale * 100) + '%';
+}
 
 function fitCanvasToScreen(){
   const isMobile = window.innerWidth <= 768;
-  const pad = isMobile ? 32 : 60;
-  const availW = workspace.clientWidth - pad;
-  const availH = workspace.clientHeight - pad;
+  const padW = isMobile ? 32 : 80;
+  const padH = isMobile ? 32 : 80;
+  const availW = workspace.clientWidth - padW;
+  const availH = workspace.clientHeight - padH;
   if(availW <= 0 || availH <= 0) return;
 
   const scaleW = availW / state.boardW;
   const scaleH = availH / state.boardH;
-  state.scale = Math.min(1, Math.min(scaleW, scaleH));
-  boardScaleWrap.style.transform = `scale(${state.scale})`;
+  // ★画面にちょうど収まるように拡大・縮小の両方向へスケーリング
+  const targetScale = Math.min(scaleW, scaleH);
+  setZoom(targetScale);
 }
 
 window.addEventListener('resize', ()=>{
@@ -896,6 +1033,11 @@ window.addEventListener('resize', ()=>{
   }
 });
 document.getElementById('btnFitScreen').addEventListener('click', fitCanvasToScreen);
+document.getElementById('btnZoomFitFloat').addEventListener('click', fitCanvasToScreen);
+
+document.getElementById('btnZoomIn').addEventListener('click', ()=> setZoom(state.scale + 0.1));
+document.getElementById('btnZoomOut').addEventListener('click', ()=> setZoom(state.scale - 0.1));
+zoomDisplayLabel.addEventListener('click', ()=> setZoom(1.0));
 
 function recalcBoardSizeTight(){
   const PAD = 24;
@@ -1467,7 +1609,7 @@ document.getElementById('inputLineWidth').addEventListener('input', (e)=>{
 });
 
 /* =========================================================
-   IMAGE GROUP CREATION (個別ドラッグリサイズ対応)
+   IMAGE GROUP CREATION
 ========================================================= */
 function updateGroupFrameWidth(groupEl, item){
   const slots = groupEl.querySelectorAll('.img-slot');
@@ -1516,7 +1658,6 @@ function createImageGroupItem(data){
   const topEmpty = !item.topText.trim();
   const btmEmpty = !item.bottomText.trim();
 
-  // 各画像スロット（個別右下ハンドル付き）
   let imagesHtml = '';
   item.images.forEach((imgObj, idx) => {
     const slotW = item.images.length > 1 ? (imgObj.width || 200) + 'px' : '100%';
@@ -1561,7 +1702,6 @@ function createImageGroupItem(data){
 
   itemsContainer.appendChild(el);
 
-  // 枠全体のツールバー
   el.querySelector('.delete-btn').addEventListener('click', (e)=>{ e.stopPropagation(); deleteItem(id); });
   el.querySelector('.btn-add-top').addEventListener('click', (e)=>{
     e.stopPropagation();
@@ -1576,7 +1716,6 @@ function createImageGroupItem(data){
     startMergeMode(id);
   });
 
-  // 各画像スロットの個別ツールバーイベント
   el.querySelectorAll('.btn-recrop').forEach(btn => {
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -1601,7 +1740,6 @@ function createImageGroupItem(data){
     });
   });
 
-  // ★画像ごとの個別斜めドラッグリサイズハンドラ
   el.querySelectorAll('.slot-resize-handle').forEach(handle => {
     handle.addEventListener('pointerdown', (e)=>{
       e.stopPropagation(); e.preventDefault();
@@ -2072,6 +2210,7 @@ document.getElementById('btnOpenExportModal').addEventListener('click', async ()
   document.querySelectorAll('.item.selected, .title-tag-item.selected').forEach(el => el.classList.remove('selected'));
   board.classList.add('exporting');
 
+  // キャプチャ時のみ原寸（1:1）へ復元
   const prevTransform = boardScaleWrap.style.transform;
   boardScaleWrap.style.transform = 'none';
 
@@ -2154,10 +2293,9 @@ homeJsonInput.addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = (ev)=>{
+  reader.onload = async (ev)=>{
     try {
       const data = JSON.parse(ev.target.result);
-      const list = getSavedProjects();
       const newId = uid('proj');
       const doc = {
         id: newId,
@@ -2169,9 +2307,9 @@ homeJsonInput.addEventListener('change', (e)=>{
         settings: data.settings || {},
         items: data.items || []
       };
-      list.unshift(doc);
-      saveProjectsList(list);
-      openProject(newId);
+      await dbSaveProject(doc);
+      await renderHomeGrid();
+      await openProject(newId);
     } catch(err){
       alert('JSON読み込み失敗: ' + err.message);
     }
@@ -2199,39 +2337,45 @@ document.getElementById('btnToggleDrawer').addEventListener('click', openMobileD
 document.getElementById('btnCloseDrawer').addEventListener('click', closeMobileDrawer);
 sidebarBackdrop.addEventListener('click', closeMobileDrawer);
 
-function switchView(view){
+async function switchView(view){
   document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
   if(view === 'home'){
     document.getElementById('view-home').classList.add('active');
-    renderHomeGrid();
+    await renderHomeGrid();
   } else {
     document.getElementById('view-editor').classList.add('active');
     recalcBoardSizeTight();
   }
 }
 
-document.getElementById('btnBackToHome').addEventListener('click', ()=>{
-  saveCurrentToStorage();
-  switchView('home');
+// 確実に保存完了を待ってからトップページに戻る
+document.getElementById('btnBackToHome').addEventListener('click', async ()=>{
+  await saveCurrentToStorage();
+  await switchView('home');
 });
-document.getElementById('btnBackToHomeDrawer').addEventListener('click', ()=>{
+document.getElementById('btnBackToHomeDrawer').addEventListener('click', async ()=>{
   closeMobileDrawer();
-  saveCurrentToStorage();
-  switchView('home');
+  await saveCurrentToStorage();
+  await switchView('home');
 });
 
-document.getElementById('btnSaveLocal').addEventListener('click', function(){
-  saveCurrentToStorage();
+document.getElementById('btnSaveLocal').addEventListener('click', async function(){
   const btn = this;
   const origText = btn.textContent;
-  btn.textContent = '保存完了 ✓';
-  btn.style.color = 'var(--c-turquoise)';
-  btn.style.borderColor = 'var(--c-turquoise)';
-  setTimeout(()=>{
+  btn.textContent = '保存中...';
+  const success = await saveCurrentToStorage();
+  if(success){
+    btn.textContent = '保存完了 ✓';
+    btn.style.color = 'var(--c-turquoise)';
+    btn.style.borderColor = 'var(--c-turquoise)';
+    setTimeout(()=>{
+      btn.textContent = origText;
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 1400);
+  } else {
     btn.textContent = origText;
-    btn.style.color = '';
-    btn.style.borderColor = '';
-  }, 1400);
+  }
 });
 
 document.getElementById('homeNewBtn').addEventListener('click', ()=>{
@@ -2251,11 +2395,11 @@ document.getElementById('homeNewBtn').addEventListener('click', ()=>{
   switchView('editor');
 });
 
-function openProject(id){
-  const doc = getSavedProjects().find(p => p.id === id);
+async function openProject(id){
+  const doc = await dbGetProject(id);
   if(!doc) return;
   state.currentProjectId = doc.id;
-  state.docTitle = doc.title;
+  state.docTitle = doc.title || 'Untitled Character';
   state.titleData = Object.assign({ x: 24, y: 24, ...DEFAULT_TITLE }, doc.titleData || {});
   state.settings = Object.assign({ ...DEFAULT_SETTINGS }, doc.settings || {});
   state.items = {};
