@@ -37,6 +37,17 @@
   html, body { height: 100%; font-family: var(--font-jp); background: var(--c-bg); color: var(--c-text-main); -webkit-font-smoothing: antialiased; overflow: hidden; }
   button, input, select, textarea { font-family: inherit; }
 
+  /* OSフォーカス喪失防止用の非表示inputスタイル */
+  .visually-hidden-file {
+    position: fixed !important;
+    top: -1000px !important;
+    left: -1000px !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0.001 !important;
+    pointer-events: none !important;
+  }
+
   /* VIEWS */
   .view-container { display: none; height: 100vh; width: 100vw; }
   .view-container.active { display: flex; }
@@ -214,57 +225,28 @@
     touch-action: none;
   }
 
-  /* ★フローティングズームバー（拡大縮小・全体表示コントローラー） */
+  /* フローティングズームバー */
   .zoom-floating-bar {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(15, 23, 42, 0.88);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 30px;
-    padding: 4px 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
-    z-index: 90;
+    position: absolute; bottom: 20px; right: 20px;
+    background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 30px;
+    padding: 4px 8px; display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28); z-index: 90;
   }
   .zoom-btn {
-    background: transparent;
-    border: none;
-    color: #f1f5f9;
-    font-size: 15px;
-    font-weight: 700;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
+    background: transparent; border: none; color: #f1f5f9; font-size: 15px; font-weight: 700;
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s;
   }
   .zoom-btn:hover { background: #334155; color: #38bdf8; }
   .zoom-label {
-    color: #e2e8f0;
-    font-size: 11.5px;
-    font-weight: 600;
-    min-width: 44px;
-    text-align: center;
-    cursor: pointer;
-    user-select: none;
+    color: #e2e8f0; font-size: 11.5px; font-weight: 600; min-width: 44px;
+    text-align: center; cursor: pointer; user-select: none;
   }
   .zoom-fit-btn {
-    background: rgba(255, 255, 255, 0.12);
-    border: none;
-    color: #f1f5f9;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 14px;
-    cursor: pointer;
-    transition: background 0.15s;
+    background: rgba(255, 255, 255, 0.12); border: none; color: #f1f5f9;
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 14px;
+    cursor: pointer; transition: background 0.15s;
   }
   .zoom-fit-btn:hover { background: var(--c-turquoise); color: #fff; }
 
@@ -373,7 +355,7 @@
 
   .img-slot {
     position: relative;
-    min-width: 50px; background: transparent;
+    min-width: 40px; background: transparent;
     border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center;
     overflow: hidden; line-height: 0;
   }
@@ -399,6 +381,7 @@
   .mini-tool-btn:hover { background: #334155; color: #38bdf8; }
   .mini-tool-btn.btn-del-img:hover { background: #7f1d1d; color: #fca5a5; }
 
+  /* 画像単体の右下ドラッグリサイズハンドル */
   .slot-resize-handle {
     position: absolute; right: -4px; bottom: -4px; width: 14px; height: 14px;
     cursor: nwse-resize; background: var(--board-line1); border: 2px solid #fff;
@@ -464,11 +447,11 @@
   .text-item-box.editing .md-render { display: none; }
   .text-item-box.editing .md-edit { display: block; }
 
-  /* リサイズハンドル各種 */
+  /* 外枠リサイズハンドル */
   .aspect-resize-handle {
     position: absolute; right: -6px; bottom: -6px; width: 16px; height: 16px;
     cursor: nwse-resize; background: var(--board-line1); border: 2px solid var(--board-bg);
-    border-radius: 50%; opacity: 0; transition: opacity .12s; z-index: 10;
+    border-radius: 50%; opacity: 0; transition: opacity .12s; z-index: 40;
     touch-action: none;
   }
   .item:hover .aspect-resize-handle, .item.selected .aspect-resize-handle { opacity: 1; }
@@ -581,7 +564,7 @@
     </div>
     <div style="display:flex; gap:8px;">
       <button class="btn-nav" id="homeLoadJsonBtn">JSON復元</button>
-      <input type="file" id="homeJsonInput" accept="application/json" style="display:none;">
+      <input type="file" id="homeJsonInput" accept="application/json" class="visually-hidden-file">
     </div>
   </header>
 
@@ -637,7 +620,7 @@
           <div>画像を追加<small>原寸高画質トリミング対応</small></div>
           <span>＋</span>
         </button>
-        <input type="file" id="imageFileInput" accept="image/*" style="display:none;">
+        <input type="file" id="imageFileInput" accept="image/*" class="visually-hidden-file">
 
         <button class="action-btn" id="btnAddText" style="margin-top:8px; border-bottom-color:#475569;">
           <div>テキストボックスを追加<small>縦横斜めの自由変形対応</small></div>
@@ -726,12 +709,12 @@
         <button class="btn-cancel-merge" id="btnCancelMerge">✕ キャンセル</button>
       </div>
 
-      <!-- ★右下のフローティングズームバー（拡大・縮小・リセット・全体表示） -->
+      <!-- 右下のフローティングズームバー -->
       <div class="zoom-floating-bar">
-        <button class="zoom-btn" id="btnZoomOut" title="縮小 (5%)">−</button>
+        <button class="zoom-btn" id="btnZoomOut" title="縮小">−</button>
         <span class="zoom-label" id="zoomDisplayLabel" title="クリックで100%にリセット">100%</span>
-        <button class="zoom-btn" id="btnZoomIn" title="拡大 (5%)">＋</button>
-        <button class="zoom-fit-btn" id="btnZoomFitFloat" title="画面サイズにぴったり合わせる">全体</button>
+        <button class="zoom-btn" id="btnZoomIn" title="拡大">＋</button>
+        <button class="zoom-fit-btn" id="btnZoomFitFloat" title="画面にぴったり合わせる">全体</button>
       </div>
 
       <div class="board-scale-wrap" id="boardScaleWrap">
@@ -850,7 +833,7 @@ let uidCount = 0;
 function uid(p){ return p + '_' + (++uidCount) + '_' + Date.now().toString(36); }
 
 /* =========================================================
-   INDEXED-DB STORAGE (大容量画像も確実に完全保存)
+   INDEXED-DB STORAGE
 ========================================================= */
 const DB_NAME = 'CharacterLookbookDB';
 const DB_VERSION = 1;
@@ -933,7 +916,6 @@ async function renderHomeGrid(){
     grid.innerHTML = '<div class="empty-state">✦ 保存された資料はありません。「新規作成」から開始してください。</div>';
     return;
   }
-  // 更新日時の降順
   list.sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
 
   list.forEach(item => {
@@ -1022,7 +1004,6 @@ function fitCanvasToScreen(){
 
   const scaleW = availW / state.boardW;
   const scaleH = availH / state.boardH;
-  // ★画面にちょうど収まるように拡大・縮小の両方向へスケーリング
   const targetScale = Math.min(scaleW, scaleH);
   setZoom(targetScale);
 }
@@ -1407,7 +1388,7 @@ function findSmartNextPos(w, h){
 }
 
 /* =========================================================
-   RESIZING HANDLERS
+   RESIZING HANDLERS (★外枠全体の斜めドラッグ連動リサイズ)
 ========================================================= */
 function makeAspectResizableWithSnap(handle, item, el){
   handle.addEventListener('pointerdown', (e)=>{
@@ -1416,23 +1397,45 @@ function makeAspectResizableWithSnap(handle, item, el){
     selectItem(item.id);
 
     const startX = e.clientX;
-    const origW = el.offsetWidth;
-    const origH = el.offsetHeight;
-    const ratio = origH / origW;
+    const origGroupW = el.offsetWidth;
+    const origGroupH = el.offsetHeight;
+    const ratio = origGroupH / origGroupW;
     const others = getOtherElementsBoxes(item.id);
+
+    // 複数画像がある場合、各画像のスロット初期幅を記録
+    const initialSlotWidths = (item.images || []).map(img => img.width || 200);
+    const initialTotalSlotW = initialSlotWidths.reduce((a, b) => a + b, 0);
 
     function move(e2){
       const dx = (e2.clientX - startX) / state.scale;
-      let rawW = Math.max(140, origW + dx);
+      let rawW = Math.max(120, origGroupW + dx);
       let rawH = rawW * ratio;
 
       const snapped = calculateResizeSnap(item.x, item.y, rawW, rawH, others);
-      let newW = snapped.w;
+      let newGroupW = snapped.w;
 
       updateGuides(snapped.guideX, snapped.guideY);
 
-      el.style.width = newW + 'px';
-      item.w = newW;
+      // ★複数画像がある場合：枠の伸縮倍率を中の全画像へ連動反映
+      if(item.images && item.images.length > 1 && initialTotalSlotW > 0){
+        const gapAndPad = (item.images.length - 1) * 8 + 16;
+        const availSlotSpace = Math.max(item.images.length * 40, newGroupW - gapAndPad);
+        const scaleFactor = availSlotSpace / initialTotalSlotW;
+
+        item.images.forEach((imgObj, idx) => {
+          const newSlotW = Math.max(40, Math.round(initialSlotWidths[idx] * scaleFactor));
+          imgObj.width = newSlotW;
+          const slotEl = el.querySelector(`.img-slot[data-idx="${idx}"]`);
+          if(slotEl){
+            slotEl.style.width = newSlotW + 'px';
+            slotEl.style.flex = `0 0 ${newSlotW}px`;
+          }
+        });
+        updateGroupFrameWidth(el, item);
+      } else {
+        el.style.width = newGroupW + 'px';
+        item.w = newGroupW;
+      }
     }
 
     function up(){
@@ -1696,7 +1699,7 @@ function createImageGroupItem(data){
         <textarea class="slot-text-edit" placeholder="下部テキスト（メモ・設定）を入力...">${escapeHtml(item.bottomText)}</textarea>
       </div>
 
-      <div class="aspect-resize-handle" title="比率を保ってリサイズ"></div>
+      <div class="aspect-resize-handle" title="枠全体を比率を保って拡大縮小"></div>
     </div>
   `;
 
@@ -1740,6 +1743,7 @@ function createImageGroupItem(data){
     });
   });
 
+  // 各画像単体の右下ハンドルリサイズ
   el.querySelectorAll('.slot-resize-handle').forEach(handle => {
     handle.addEventListener('pointerdown', (e)=>{
       e.stopPropagation(); e.preventDefault();
@@ -1895,7 +1899,7 @@ function createTextBox(data){
 }
 
 /* =========================================================
-   CROP MODAL (原寸高画質＆再トリミング対応)
+   CROP MODAL
 ========================================================= */
 const cropModal = document.getElementById('cropModal');
 const cropModalHeaderTitle = document.getElementById('cropModalHeaderTitle');
@@ -2119,15 +2123,18 @@ document.getElementById('btnCancelCrop').addEventListener('click', ()=>{
 });
 
 /* =========================================================
-   TOOLBAR & FILE INPUTS
+   TOOLBAR & FILE INPUTS (フォーカス保護)
 ========================================================= */
 const imageFileInput = document.getElementById('imageFileInput');
 
 document.getElementById('btnAddSingleImage').addEventListener('click', ()=>{
   closeMobileDrawer();
+  imageFileInput.focus();
   imageFileInput.click();
 });
 imageFileInput.addEventListener('change', (e)=>{
+  window.focus();
+  document.body.focus();
   if(e.target.files.length){
     startCroppingProcess(e.target.files[0]);
   }
@@ -2210,7 +2217,6 @@ document.getElementById('btnOpenExportModal').addEventListener('click', async ()
   document.querySelectorAll('.item.selected, .title-tag-item.selected').forEach(el => el.classList.remove('selected'));
   board.classList.add('exporting');
 
-  // キャプチャ時のみ原寸（1:1）へ復元
   const prevTransform = boardScaleWrap.style.transform;
   boardScaleWrap.style.transform = 'none';
 
@@ -2288,8 +2294,13 @@ document.getElementById('btnExportJson').addEventListener('click', ()=>{
 });
 
 const homeJsonInput = document.getElementById('homeJsonInput');
-document.getElementById('homeLoadJsonBtn').addEventListener('click', ()=> homeJsonInput.click());
+document.getElementById('homeLoadJsonBtn').addEventListener('click', ()=>{
+  homeJsonInput.focus();
+  homeJsonInput.click();
+});
 homeJsonInput.addEventListener('change', (e)=>{
+  window.focus();
+  document.body.focus();
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
@@ -2348,7 +2359,6 @@ async function switchView(view){
   }
 }
 
-// 確実に保存完了を待ってからトップページに戻る
 document.getElementById('btnBackToHome').addEventListener('click', async ()=>{
   await saveCurrentToStorage();
   await switchView('home');
